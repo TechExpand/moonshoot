@@ -1,9 +1,27 @@
 const { Telegraf, Markup } = require('telegraf');
 const axios = require('axios');
 
+const express = require('express');
+const cors = require('cors');
+let cookieParser = require('cookie-parser');
 // Replace with your actual Telegram Bot Token
 const TOKEN = "7544453019:AAFKGezyFp6_U2J2eUfiyanvEvljv67tSEM";
 const BOT_USERNAME = "@MoonShotCallers_Bot";
+
+
+const app = express();
+const corsOptions = {
+    origin: '*',
+    credentials: true,            //access-control-allow-credentials:true
+    optionSuccessStatus: 200,
+}
+app.use(cors(corsOptions)) // Use this after the variable declaration
+// app.use(morgan(':method :url :status :user-agent - :response-time ms'));
+// app.use(formidable());
+// app.use(express.static('./client'));
+app.use(express.json());
+app.use(cookieParser());
+app.use(express.urlencoded({extended: true}));
 
 // GeckoTerminal API base URL
 const GECKOTERMINAL_API_BASE_URL = "https://api.geckoterminal.com/api/v2/networks/{network_id}/pools/{pool_id}";
@@ -169,3 +187,7 @@ const main = () => {
 };
 
 main();
+
+app.listen(process.env.PORT || 3000, function () {
+    console.log('Express app running on port ' + (process.env.PORT || 3000))
+});
