@@ -188,6 +188,10 @@ const main = () => {
 
 main();
 
+app.get('/api', function(req, res){
+    res.send('testing meme coin lolzzzzz');
+  });
+
 app.listen(process.env.PORT || 3000, function () {
     console.log('Express app running on port ' + (process.env.PORT || 3000))
 });
