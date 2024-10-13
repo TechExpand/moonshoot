@@ -60,14 +60,14 @@ const deleteMessage = async (ctx, messageId, delay = 5000) => {
 };
 
 const callMoonshot = async (ctx) => {
-    const token = await Token.find()
+    const tokens = await Token.find()
     console.log("print token result...")
-    console.log(token)
+    console.log(tokens)
 
     const chatId = ctx.chat?.id;
     let messages = [];
 
-    for (let token of token) {
+    for (let token of tokens) {
         const data = await fetchTokenData(token.network_id, token.pool_id);
         if (data) {
 
