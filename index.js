@@ -23,40 +23,36 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(express.urlencoded({extended: true}));
 
+
+const mongoose = require('mongoose');
+const Token = require('./model/Token');
+// const uri = "mongodb+srv://ediku126:ediku126@cluster0.flaukda.mongodb.net/?retryWrites=true&w=majority";
+const uri = "mongodb+srv://ediku126:ediku126@cluster0.7xzwjnh.mongodb.net/?retryWrites=true&w=majority";
+
+// mongosh "mongodb+srv://cluster0.flaukda.mongodb.net/myFirstDatabase" --apiVersion 1 --username ediku126
+// const uri = "mongodb://localhost:27017/davidfriend"
+mongoose.connect(uri, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true
+  })
+  .then(() => {
+    console.log("MongoDB Connected…")
+  })
+  .catch(err => console.log(err))
+
+
 // GeckoTerminal API base URL
 const GECKOTERMINAL_API_BASE_URL = "https://api.geckoterminal.com/api/v2/networks/{network_id}/pools/{pool_id}";
 
 // Crypto tokens data that you want to share (example data)
-const MOONSHOT_TOKENS = [
-    {
-        network_id: "eth",
-        pool_id: "0x4628a0a564debfc8798eb55db5c91f2200486c24"
-    },
 
-    {
-        network_id: "eth",
-        pool_id: "0x78372C85f187324dD27464D644DbC7F6ae32377a"
-    },
+// const MOONSHOT_TOKENS = tokens
 
 
-    {
-        network_id: "eth",
-        pool_id: "0x50CE218Bd3287667cC4D7973F77AE0f441308E68"
-    },
 
 
-    {
-        network_id: "eth",
-        pool_id: "0x5B77623753bF737153e78A9e7feF6543b29764c4"
-    },
-
-    {
-        network_id: "eth",
-        pool_id: "0xae74064E7670Ea437B70c37ff10853A0c2240079"
-    },
-
-
-];
+// console.log(MOONSHOT_TOKENS)
+// console.log(MOONSHOT_TOKENS)
 
 // Commands
 const startCommand = async (ctx) => {
@@ -71,10 +67,14 @@ const deleteMessage = async (ctx, messageId, delay = 5000) => {
 };
 
 const callMoonshot = async (ctx) => {
+    const token = await Token.find()
+    console.log("print token result...")
+    console.log(token)
+
     const chatId = ctx.chat?.id;
     let messages = [];
 
-    for (let token of MOONSHOT_TOKENS) {
+    for (let token of token) {
         const data = await fetchTokenData(token.network_id, token.pool_id);
         if (data) {
 
@@ -165,7 +165,8 @@ const fetchTokenData = async (networkId, poolId) => {
     }
 };
 
-const main = () => {
+const main = async () => {
+
     const bot = new Telegraf(TOKEN);
 
     // Commands
@@ -183,6 +184,7 @@ const main = () => {
 
     // Polling
     console.log('🔄 Polling......');
+   
     bot.launch();
 };
 
