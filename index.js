@@ -31,14 +31,7 @@ const uri = "mongodb+srv://ediku126:ediku126@cluster0.7xzwjnh.mongodb.net/?retry
 
 // mongosh "mongodb+srv://cluster0.flaukda.mongodb.net/myFirstDatabase" --apiVersion 1 --username ediku126
 // const uri = "mongodb://localhost:27017/davidfriend"
-mongoose.connect(uri, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true
-  })
-  .then(() => {
-    console.log("MongoDB Connected…")
-  })
-  .catch(err => console.log(err))
+
 
 
 // GeckoTerminal API base URL
@@ -188,7 +181,15 @@ const main = async () => {
     bot.launch();
 };
 
-main();
+mongoose.connect(uri, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true
+  })
+  .then(() => {
+    console.log("MongoDB Connected…")
+    main();
+  })
+  .catch(err => console.log(err))
 
 app.get('/api', function(req, res){
     res.send('testing meme coin lolzzzzz');
