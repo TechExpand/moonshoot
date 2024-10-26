@@ -1,3 +1,4 @@
+```plaintext
 moonshot-telegram-bot/
 ├── src/
 │   ├── commands.js       # Contains bot command handlers
