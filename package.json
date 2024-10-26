@@ -9,11 +9,15 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "axios": "^1.7.5",
-    "cookie-parser": "^1.4.6",
+    "axios": "^1.7.7",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
-    "express": "^4.19.2",
-    "mongoose": "^8.7.1",
-    "telegraf": "^4.0.3"
-  }
+    "dotenv": "^16.4.5",
+    "express": "^4.21.1",
+    "mongoose": "^8.7.2",
+    "telegraf": "^4.16.3",
+    "telegraf-ratelimit": "^2.0.0"
+  },
+  "keywords": [],
+  "devDependencies": {}
 }
