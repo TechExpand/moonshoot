@@ -1,200 +1,154 @@
-const { Telegraf, Markup } = require('telegraf');
+require('dotenv').config();  // Load environment variables securely
+const { Telegraf } = require('telegraf');
 const axios = require('axios');
-
 const express = require('express');
 const cors = require('cors');
-let cookieParser = require('cookie-parser');
-// Replace with your actual Telegram Bot Token
-const TOKEN = "7544453019:AAFKGezyFp6_U2J2eUfiyanvEvljv67tSEM";
-const BOT_USERNAME = "@MoonShotCallers_Bot";
+const cookieParser = require('cookie-parser');
+const rateLimit = require('telegraf-ratelimit');
 
+// Load sensitive data from environment variables and verify
+const TOKEN = process.env.TELEGRAM_TOKEN;
+const BOT_USERNAME = process.env.BOT_USERNAME || "@MoonShotCallers_Bot";
 
-const app = express();
-const corsOptions = {
-    origin: '*',
-    credentials: true,            //access-control-allow-credentials:true
-    optionSuccessStatus: 200,
+if (!TOKEN) {
+    throw new Error("⚠️ Telegram token is missing. Ensure TELEGRAM_TOKEN is set in .env");
 }
-app.use(cors(corsOptions)) // Use this after the variable declaration
-// app.use(morgan(':method :url :status :user-agent - :response-time ms'));
-// app.use(formidable());
-// app.use(express.static('./client'));
+
+// Helper function to format numbers with commas
+const formatNumber = (number) => number.toLocaleString();
+
+// Initialize Express application
+const app = express();
+app.use(cors({ origin: '*', credentials: true }));
 app.use(express.json());
 app.use(cookieParser());
-app.use(express.urlencoded({extended: true}));
+app.use(express.urlencoded({ extended: true }));
 
-
-const mongoose = require('mongoose');
-const Token = require('./model/Token');
-// const uri = "mongodb+srv://ediku126:ediku126@cluster0.flaukda.mongodb.net/?retryWrites=true&w=majority";
-const uri = "mongodb+srv://ediku126:ediku126@cluster0.7xzwjnh.mongodb.net/?retryWrites=true&w=majority";
-
-// mongosh "mongodb+srv://cluster0.flaukda.mongodb.net/myFirstDatabase" --apiVersion 1 --username ediku126
-// const uri = "mongodb://localhost:27017/davidfriend"
-
-
+// Rate limiting for bot to prevent abuse
+const limitConfig = {
+    window: 3000, // Limit one action every 3 seconds
+    limit: 1,
+    onLimitExceeded: (ctx) => ctx.reply('⚠️ Too many requests! Please slow down.'),
+};
 
 // GeckoTerminal API base URL
-const GECKOTERMINAL_API_BASE_URL = "https://api.geckoterminal.com/api/v2/networks/{network_id}/pools/{pool_id}";
+const GECKOTERMINAL_API_BASE_URL = "https://api.geckoterminal.com/api/v2/networks/{network}/pools/{address}";
 
-// Crypto tokens data that you want to share (example data)
-
-// const MOONSHOT_TOKENS = tokens
-
-
-
-
-// console.log(MOONSHOT_TOKENS)
-// console.log(MOONSHOT_TOKENS)
-
-// Commands
+// Start command
 const startCommand = async (ctx) => {
     await ctx.reply('👋 Welcome to MoonShot Bot! 🚀\n\nI\'m here to help you track the next big tokens! 🌕');
 };
 
+// Helper function to format pool data message
+const formatPoolMessage = (data) => {
+    const name = data.name || "Unknown Token";
+    const address = data.address || "N/A";
+    const price = data.price !== undefined ? `$${data.price}` : "Data not available";
+    const volume = data.volume !== undefined ? `$${data.volume}` : "Data not available";
+    const marketCap = data.market_cap !== undefined ? `$${data.market_cap}` : "Data not available";
+    const priceChange = data.price_change_percentage || "Data not available";
+    const buyTransactions = data.buy_transactions !== undefined ? data.buy_transactions : "Data not available";
 
-// Helper function to delete a message after a delay
-const deleteMessage = async (ctx, messageId, delay = 5000) => {
-    await ctx.deleteMessage(messageId);
-    await ctx.reply('👋 Welcome to MoonShot Bot! 🚀\n\nI\'m here to help you track the next big tokens! 🌕');
+    return `🔍 *${name}*\n🔗 *Contract:* \`${address}\`\n💰 *Price:* ${price}\n📊 *Volume:* ${volume}\n💧 *Buy Transactions:* ${buyTransactions}\n📈 *Market Cap:* ${marketCap}\n📈 *Price Change:* ${priceChange}\n💸 [Trade Link](https://nqswap.nebulaqprotocol.xyz)`;
 };
 
-const callMoonshot = async (ctx) => {
-    const tokens = await Token.find()
-    console.log("print token result...")
-    console.log(tokens)
+// Function to fetch pool data from GeckoTerminal API with better error handling
+const fetchPoolData = async (network, poolAddress) => {
+    const url = GECKOTERMINAL_API_BASE_URL
+        .replace("{network}", network)
+        .replace("{address}", poolAddress);
 
-    const chatId = ctx.chat?.id;
-    let messages = [];
-
-    for (let token of tokens) {
-        const data = await fetchTokenData(token.network_id, token.pool_id);
-        if (data) {
-
-            const message = `🔍 *${data.name}*\n🔗 *Contract:* \`${data.address}\`\n💰 *Price:* $${data.price}\n📊 *Volume:* $${data.volume}\n💧 *Buy Transactions:* ${data.buy_transactions}\n📈 *Market Cap:* $${data.market_cap}\n📈 *Price Change:* ${data.price_change_percentage}\nBuy Token Now!!! >> https://nqswap.nebulaqprotocol.xyz`;
-            messages.push(message);
-        } else {
-            messages.push(`❌ Failed to fetch data for ${token.name} 😢`);
-        }
-    }
-
-    if (chatId) {
-        await ctx.telegram.sendMessage(chatId, messages.join('\n\n'), { parse_mode: "Markdown" });
-    }
-};
-
-const joinCommunity = async (ctx) => {
-    const chatId = ctx.chat?.id;
-    const communityLink = "https://t.me/+EQapHXPbQaA0ZWE0";
-    const message = `👥 Join our amazing community on Telegram! 🎉\n\n👉 [Click Here to Join](${communityLink})`;
-
-    if (chatId) {
-        await ctx.telegram.sendMessage(chatId, message, { parse_mode: "Markdown" });
-    }
-};
-
-const tradeMoonshots = async (ctx) => {
-    const chatId = ctx.chat?.id;
-    const tradeLink = "https://nqswap.nebulaqprotocol.xyz/";
-    const message = `💸 Ready to trade MoonShots? 🚀\n\nStart trading now: [Trade Now](${tradeLink})`;
-
-    if (chatId) {
-        await ctx.telegram.sendMessage(chatId, message, { parse_mode: "Markdown" });
-    }
-};
-
-const handleMessage = async (ctx) => {
-    const messageType = ctx.chat?.type;
-    const text = ctx.message.text || "";
-
-    console.log(`👤 User (${ctx.chat?.id}) in ${messageType}: "${text}"`);
-
-    if (messageType === 'group') {
-        if (text.includes(BOT_USERNAME)) {
-            const newText = text.replace(BOT_USERNAME, '').trim();
-            const response = handleResponse(newText);
-            await ctx.reply(response);
-        } else {
-            return;
-        }
-    } else {
-        const response = handleResponse(text);
-        await ctx.reply(response);
-    }
-};
-
-const handleResponse = (text) => {
-    return '🛠 I will respond to this message shortly! ⏳';
-};
-
-const errorHandling = (err) => {
-    console.error(`⚠️ Error: ${err}`);
-};
-const formatNumber = (number) => {
-    return number.toLocaleString();
-};
-
-const fetchTokenData = async (networkId, poolId) => {
-    const url = `https://api.geckoterminal.com/api/v2/networks/${networkId}/pools/${poolId}`;
-    // console.log(url)
+    console.log(`Fetching data from: ${url}`);
 
     try {
-
         const response = await axios.get(url);
         const data = response.data?.data?.attributes;
 
+        if (!data) {
+            console.warn(`⚠️ Data for pool ${poolAddress} is missing or undefined.`);
+            return null;
+        }
+
         return {
-            name: data?.name,
-            address: data?.address,
-            price: Number(data?.base_token_price_usd) >= 0.1 ? formatNumber(Number(data?.base_token_price_usd)) : Number(data?.base_token_price_usd),
-            volume: formatNumber(Number(data?.volume_usd.h24)),
-            market_cap: Number(data?.market_cap_usd) >= 0.1 ? formatNumber(Number(data?.market_cap_usd)) : Number(data?.market_cap_usd),
-            price_change_percentage: `\nm5: ${data?.price_change_percentage.m5 + "%" + "\n"}h1:${data?.price_change_percentage.h1 + "%" + "\n"}h6: ${data?.price_change_percentage.h6 + "%" + "\n"}h24:${data?.price_change_percentage.h24 + "%" + "\n"}`,
-            buy_transactions: formatNumber(Number(data?.transactions.h24.buys))
+            name: data.name || "Unknown",
+            address: data.address || "N/A",
+            price: data.base_token_price_usd ? formatNumber(Number(data.base_token_price_usd)) : undefined,
+            volume: data.volume_usd_h24 ? formatNumber(Number(data.volume_usd_h24)) : undefined,
+            market_cap: data.market_cap_usd ? formatNumber(Number(data.market_cap_usd)) : undefined,
+            price_change_percentage: data.price_change_percentage_5m || data.price_change_percentage_1h || data.price_change_percentage_6h || data.price_change_percentage_24h
+                ? `m5: ${data.price_change_percentage_5m || "N/A"}%, h1: ${data.price_change_percentage_1h || "N/A"}%, h6: ${data.price_change_percentage_6h || "N/A"}%, h24: ${data.price_change_percentage_24h || "N/A"}%`
+                : "Data not available",
+            buy_transactions: data.transactions_24h?.buys ? formatNumber(Number(data.transactions_24h.buys)) : undefined
         };
     } catch (error) {
-        console.error(`Error fetching token data: ${error}`);
+        console.error(`❌ Error fetching pool data for ${poolAddress}: ${error.message}`);
         return null;
     }
 };
 
+// Moonshot pool information
+const callMoonshot = async (ctx) => {
+    try {
+        const pools = [
+            { network: 'eth', address: '0xa6Cc3C2531FdaA6Ae1A3CA84c2855806728693e8' }, 
+            { network: 'eth', address: '0x93236881Cbe546de9d46750316942D0821dF6ce2' },
+            { network: 'eth', address: '' }, 
+            { network: 'eth', address: '0xa6Cc3C2531FdaA6Ae1A3CA84c2855806728693e8' }, 
+            { network: 'eth', address: '0xa6Cc3C2531FdaA6Ae1A3CA84c2855806728693e8' }, 
+        ];
+
+        const messages = await Promise.all(pools.map(async (pool) => {
+            const data = await fetchPoolData(pool.network, pool.address);
+            return data ? formatPoolMessage(data) : `❌ Failed to fetch data for pool: ${pool.address} 😢`;
+        }));
+
+        if (ctx.chat?.id) {
+            await ctx.telegram.sendMessage(ctx.chat.id, messages.join('\n\n'), { parse_mode: "Markdown" });
+        }
+    } catch (error) {
+        console.error("⚠️ Error in callMoonshot:", error);
+        await ctx.reply("⚠️ Unable to retrieve Moonshot data.");
+    }
+};
+
+// Join community command
+const joinCommunity = async (ctx) => {
+    const communityLink = "https://t.me/+EQapHXPbQaA0ZWE0";
+    const message = `👥 Join our Telegram community! 🎉\n\n👉 [Join Here](${communityLink})`;
+    await ctx.reply(message, { parse_mode: "Markdown" });
+};
+
+// Trade Moonshots command
+const tradeMoonshots = async (ctx) => {
+    const tradeLink = "https://nqswap.nebulaqprotocol.xyz/";
+    const message = `💸 Ready to trade MoonShots? 🚀\n\n👉 [Trade Now](${tradeLink})`;
+    await ctx.reply(message, { parse_mode: "Markdown" });
+};
+
+// Launch the bot with commands and error handling
 const main = async () => {
-
     const bot = new Telegraf(TOKEN);
+    bot.use(rateLimit(limitConfig));
 
-    // Commands
     bot.command('start', startCommand);
     bot.command('call_moonshot', callMoonshot);
-    bot.command('delete_moonshot', deleteMessage);
     bot.command('join_community', joinCommunity);
     bot.command('trade_moonshots', tradeMoonshots);
 
-    // Messages
-    bot.on('text', handleMessage);
-
-    // Errors
-    bot.catch(errorHandling);
-
-    // Polling
-    console.log('🔄 Polling......');
-   
+    bot.catch((err) => console.error(`⚠️ Bot error: ${err.message}`));
+    console.log('🔄 Bot polling started...');
     bot.launch();
 };
 
-mongoose.connect(uri, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true
-  })
-  .then(() => {
-    console.log("MongoDB Connected…")
-    main();
-  })
-  .catch(err => console.log(err))
-
-app.get('/api', function(req, res){
-    res.send('testing meme coin lolzzzzz');
-  });
-
-app.listen(process.env.PORT || 3000, function () {
-    console.log('Express app running on port ' + (process.env.PORT || 3000))
+// Start Express server
+const PORT = process.env.PORT || 3000;
+app.get('/api', (req, res) => {
+    res.send('MoonShot bot API is active.');
 });
+
+app.listen(PORT, () => {
+    console.log(`🌐 Express server running on port ${PORT}`);
+});
+
+// Start the bot
+main();
