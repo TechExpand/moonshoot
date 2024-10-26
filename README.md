@@ -45,7 +45,7 @@ In your project root, create a `.env` file to securely store sensitive informati
 ```plaintext
 - TELEGRAM_TOKEN=your_telegram_bot_token
 - GECKO_API_BASE_URL=https://api.geckoterminal.com/api/v2
-
+```
 ##Folder Structure
 ```plaintext
 moonshot-telegram-bot/
@@ -56,7 +56,7 @@ moonshot-telegram-bot/
 │   └── index.js          # Main server and bot initialization
 └── .env                  # Environment variables file
 └── README.md             # Project documentation
-
+```
 ##Usage
 1. **Run the bot locally**:
 
